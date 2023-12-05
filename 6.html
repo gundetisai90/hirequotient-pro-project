@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Table with Pagination and Actions</title>
+  <style>
+    /* Add your styles here */
+    .table-container {
+      margin: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .search-bar {
+      margin-bottom: 10px;
+    }
+    .selected-row {
+      background-color: #ccc !important;
+    }
+  </style>
+</head>
+<body>
+
+<div class="table-container">
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search..." class="search-input">
+    <button class="search-icon" onclick="search()">Search</button>
+  </div>
+
+  <table id="dataTable">
+    <!-- Table header will be dynamically generated -->
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="pagination-container">
+    <button class="first-page" onclick="goToPage(1)">First</button>
+    <button class="previous-page" onclick="goToPage(currentPage - 1)">Previous</button>
+    <span id="currentPage">1</span>
+    <button class="next-page" onclick="goToPage(currentPage + 1)">Next</button>
+    <button class="last-page" onclick="goToPage(totalPages)">Last</button>
+  </div>
+
+  <button class="delete-selected" onclick="deleteSelected()">Delete Selected</button>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script>
+  // Fetch data from the API
+  $.get("https://geektrust.s3-ap-southeast-1.amazonaws.com/adminui-problem/members.json", function(data) {
+    // Your data processing logic here
+    initializeTable(data);
+  });
+
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let totalPages = 1;
+  let filteredData = [];
+
+  function initializeTable(data) {
+    filteredData = data;
+    updateTable();
+  }
+
+  function updateTable() {
+    const table = $("#dataTable");
+    const thead = table.find("thead");
+    const tbody = table.find("tbody");
+
+    // Clear existing data
+    thead.empty();
+    tbody.empty();
+
+    // Dynamically generate table header
+    const columns = Object.keys(filteredData[0]);
+    const headerRow = $("<tr></tr>");
+    headerRow.append('<th><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>');
+    columns.forEach(column => {
+      headerRow.append(`<th>${column}</th>`);
+    });
+    headerRow.append("<th>Actions</th>");
+    headerRow.append("<th>Actions</th>");
+
+    thead.append(headerRow);
+
+    // Calculate pagination
+    totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    $("#currentPage").text(currentPage);
+
+    // Display data based on pagination
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageData = filteredData.slice(startIndex, endIndex);
+
+    // Dynamically generate table rows
+    pageData.forEach(rowData => {
+      const row = $("<tr></tr>");
+      row.append(`<td><input type="checkbox" class="selectRow" onclick="toggleSelectRow(this)"></td>`);
+      columns.forEach(column => {
+        row.append(`<td>${rowData[column]}</td>`);
+      });
+
+      // Add edit and delete buttons to each row
+      row.append(`<td><button class="edit" onclick="editRow(this)">Edit</button></td>`);
+      row.append(`<td><button class="delete" onclick="deleteRow(this)">Delete</button></td>`);
+
+      tbody.append(row);
+    });
+
+    // Highlight selected rows
+    $(".table-container tbody tr").removeClass("selected-row");
+  }
+
+  function goToPage(page) {
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+      updateTable();
+    }
+  }
+
+  function search() {
+    const searchInput = $("#searchInput").val().toLowerCase();
+    filteredData = data.filter(row =>
+      Object.values(row).some(value => value.toLowerCase().includes(searchInput))
+    );
+
+    currentPage = 1;
+    updateTable();
+  }
+
+  function editRow(button) {
+    const row = $(button).closest("tr");
+    const columns = row.find("td");
+    
+    // Example: Use prompt for editing. Replace this with your custom editing logic.
+    columns.each((index, column) => {
+      if (index > 0) {  // Skip the first column with the checkbox
+        const currentValue = $(column).text();
+        const newValue = prompt(`Enter new value for ${columns.eq(index - 1).text()}`, currentValue);
+        $(column).text(newValue);
+      }
+    });
+  }
+
+  function deleteRow(button) {
+    const row = $(button).closest("tr");
+    row.remove();
+  }
+
+  function deleteSelected() {
+    const selectedRows = $(".selectRow:checked").closest("tr");
+    selectedRows.remove();
+  }
+
+  function toggleSelectAll() {
+    const selectAllCheckbox = $("#selectAll");
+    const selectRowCheckboxes = $(".selectRow");
+    const isChecked = selectAllCheckbox.prop("checked");
+
+    selectRowCheckboxes.prop("checked", isChecked);
+  }
+
+  function toggleSelectRow(checkbox) {
+    const selectAllCheckbox = $("#selectAll");
+    const selectRowCheckboxes = $(".selectRow");
+
+    if (!checkbox.checked && selectAllCheckbox.prop("checked")) {
+      selectAllCheckbox.prop("checked", false);
+    } else if (checkbox.checked && selectRowCheckboxes.length === selectRowCheckboxes.filter(":checked").length) {
+      selectAllCheckbox.prop("checked", true);
+    }
+  }
+
+</script>
+
+</body>
+</html>
